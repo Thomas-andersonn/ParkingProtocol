@@ -164,7 +164,9 @@ String epass= "";
 //    Serial.println("Was the status");
     server.send(200, "text/html", webPage);
   });
-  
+   server.on("/heartbeat", [](){
+    server.send(200, "text/html", "Good");
+  });
   server.on("/", [](){
     server.send(200, "text/html", webPage);
   });
@@ -281,9 +283,23 @@ String epass= "";
  
 }
 int missedHeartBeats = 0;
+int heartbeatcounter = 0;
+void checkheartbeat() {
+  heartbeatcounter = heartbeatcounter + 1
+  if (heartbeatcounter == 5) {
+    heartbeatcounter = 0
+    String payload = sendHTTP("heartbeat");
+    if (payload != "Good") {
+      //Disconnect and scan for other networks
+      Serial.print("Heartbeat Failed \n");
+      WiFi.disconnect();
+    }
+    
+  }
+}
 void loop(void){
   server.handleClient();
-  
+  checkheartbeat();
 
   int packetSize = Udp.parsePacket();
   if (packetSize)
