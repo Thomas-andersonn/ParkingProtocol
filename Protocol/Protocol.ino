@@ -22,6 +22,7 @@ String startString = "swag";
 char* ssid = "swag";
 const char* password = "ishusing";
 int currentLevel =10000;
+int childNumber = 1;
 ESP8266WebServer server(80);
 
 String webPage = "";
@@ -71,27 +72,33 @@ int toggle(String action,String salt){
 }
 String sendHTTP(String type){
   HTTPClient http;
-  //GET AP number
+  //GET AP number http://jsonplaceholder.typicode.com/users/1
   
   http.begin("http://"+WiFi.gatewayIP().toString()+"/"+type);
+//http.begin("http://jsonplaceholder.typicode.com/users/1");
+
+  
   int httpCode = http.GET();
    Serial.println("PArent IP is: "+WiFi.gatewayIP().toString());
+   String payload = "0";
     if (httpCode > 0) { //Check the returning code
  
-      String payload = http.getString();   //Get the request response payload
+      payload = http.getString();   //Get the request response payload
       Serial.println(payload);                     //Print the response payload
  
     }
  
     http.end();   //Close connection
+    return payload;
 }
 void startAP(String ssid){
   String payload = sendHTTP("getChild");
 int childNumber = payload.toInt();
-   boolean conn = WiFi.softAP((startString+currentLevel+"_"+childNumber).c_str(), "ishusing");
-   Serial.println(conn);
-    Serial.println("AP Started" + conn);
-
+String broadcastSSID = startString+currentLevel+"_"+childNumber;
+   boolean conn = WiFi.softAP(broadcastSSID.c_str(), "ishusing");
+  
+    Serial.print("AP Started" + conn );
+ Serial.println(" SSID: "+ broadcastSSID);
 
     
 }
@@ -116,7 +123,7 @@ void startServer(){
       Serial.println("");
 //  EEPROM.write(0, 'c'); //write the first half
 EEPROM.commit();
-    server.send(200, "text/html", qsid);
+    server.send(200, "text/html", qsid);  
   });
    server.on("/getKey", [](){
   char str = EEPROM.read(0);
@@ -137,6 +144,11 @@ String epass= "";
     Serial.println("Was the status");
     server.send(200, "text/html", webPage);
   });
+  server.on("/getChild", [](){
+    Serial.println("getChild request Received: " +childNumber); 
+    childNumber++;
+    server.send(200, "text/html", String(childNumber));
+  });
    server.on("/start", [](){
     String id = server.arg("id");
     String ssid = "espwifi_"+id;
@@ -156,7 +168,7 @@ String epass= "";
   server.on("/", [](){
     server.send(200, "text/html", webPage);
   });
-  server.on("/socket1On", [](){
+  server.on("/socket1On", [](){ 
     String action = server.arg("action");
     String salt= server.arg("salt");
     Serial.println("SOCKET ON "+action +" "+salt);
@@ -248,7 +260,7 @@ String epass= "";
 //  for(int i=0;i<ret.length();i++){
 //    s[i] = ret.
 //  }
-  WiFi.begin(s, password);
+  WiFi.begin("swag1_1", password);
   Serial.println("");
 
   // Wait for connection
