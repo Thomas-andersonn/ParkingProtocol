@@ -262,7 +262,7 @@ String epass= "";
 //  for(int i=0;i<ret.length();i++){
 //    s[i] = ret.
 //  }
-  WiFi.begin("swag1_1", password);
+  WiFi.begin(s, password);
   Serial.println("");
 
   // Wait for connection
@@ -285,21 +285,25 @@ String epass= "";
 int missedHeartBeats = 0;
 int heartbeatcounter = 0;
 void checkheartbeat() {
-  heartbeatcounter = heartbeatcounter + 1
-  if (heartbeatcounter == 5) {
-    heartbeatcounter = 0
+  heartbeatcounter = heartbeatcounter + 1;
+  if (heartbeatcounter == 5000) {
+    heartbeatcounter = 0;
     String payload = sendHTTP("heartbeat");
+    Serial.println("Payload received for heartbeat: " + payload);
     if (payload != "Good") {
       //Disconnect and scan for other networks
       Serial.print("Heartbeat Failed \n");
-      WiFi.disconnect();
+//      WiFi.disconnect();
+      boolean conn =WiFi.softAPdisconnect (true);
+     Serial.println(conn);
+      Serial.println("AP stopped" + conn);
     }
     
   }
 }
 void loop(void){
   server.handleClient();
-  checkheartbeat();
+//  checkheartbeat();
 
   int packetSize = Udp.parsePacket();
   if (packetSize)
