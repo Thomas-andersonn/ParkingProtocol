@@ -73,7 +73,7 @@ String sendHTTP(String type){
   HTTPClient http;
   //GET AP number
   
-  http.begin("http://"+WiFi.gatewayIP().toString()+"/getChild");
+  http.begin("http://"+WiFi.gatewayIP().toString()+"/"+type);
   int httpCode = http.GET();
    Serial.println("PArent IP is: "+WiFi.gatewayIP().toString());
     if (httpCode > 0) { //Check the returning code
@@ -268,7 +268,7 @@ String epass= "";
   startServer();  
  
 }
-
+int missedHeartBeats = 0;
 void loop(void){
   server.handleClient();
   
