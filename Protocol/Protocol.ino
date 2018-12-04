@@ -73,14 +73,16 @@ int toggle(String action,String salt){
 String sendHTTP(String type){
   HTTPClient http;
   //GET AP number http://jsonplaceholder.typicode.com/users/1
-  
-  http.begin("http://"+WiFi.gatewayIP().toString()+"/"+type);
-//http.begin("http://jsonplaceholder.typicode.com/users/1");
+  WiFi.mode(WIFI_STA);
+//  http.begin("http://"+WiFi.gatewayIP().toString());
+  Serial.println("http://"+WiFi.gatewayIP().toString()+"/"+type);
+http.begin("http://192.168.4.1/getChild");
 
   
   int httpCode = http.GET();
    Serial.println("PArent IP is: "+WiFi.gatewayIP().toString());
    String payload = "0";
+   Serial.println("htttpcode :"+String(httpCode));
     if (httpCode > 0) { //Check the returning code
  
       payload = http.getString();   //Get the request response payload
@@ -89,12 +91,15 @@ String sendHTTP(String type){
     }
  
     http.end();   //Close connection
+     Serial.println("Returning Payload");  
     return payload;
 }
 void startAP(String ssid){
   String payload = sendHTTP("getChild");
+  Serial.println("Payload :"+payload);
 int childNumber = payload.toInt();
 String broadcastSSID = startString+currentLevel+"_"+childNumber;
+WiFi.mode(WIFI_AP_STA);
    boolean conn = WiFi.softAP(broadcastSSID.c_str(), "ishusing");
   
     Serial.print("AP Started" + conn );
@@ -145,7 +150,7 @@ String epass= "";
     server.send(200, "text/html", webPage);
   });
   server.on("/getChild", [](){
-    Serial.println("getChild request Received: " +childNumber); 
+    Serial.println("getChild request Received: " +String(childNumber));
     childNumber++;
     server.send(200, "text/html", String(childNumber));
   });
@@ -191,8 +196,10 @@ boolean isHigherLevel(String id){
  
  int parentLevel = (id.substring(indexOflevel,indexOfUnderScore).toInt());
  if(parentLevel < currentLevel){
+  Serial.println("True" +String(parentLevel)+ " " + String(currentLevel));
   return true;
  }
+  Serial.println("False" +String(parentLevel)+ " " + String(currentLevel));
  return false;
 }
    String getWifiNetworks(){
@@ -212,17 +219,23 @@ boolean isHigherLevel(String id){
       Serial.print(": ");
       Serial.print(WiFi.SSID(i));
       nets[i] = WiFi.SSID(i);
+//      Serial.println("******************************");
+//      Serial.println(nets[i].startsWith(startString));
+//      Serial.println(WiFi.RSSI(i)> min);
+//      Serial.println(isHigherLevel(nets[i]));
+//      Serial.println("---------------------------------");
+      
       if(nets[i].startsWith(startString) && WiFi.RSSI(i)> min && isHigherLevel(nets[i])){
         Serial.println("ISHUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU");
         String id = nets[i];
-         int indexOflevel = id.indexOf(startString) + startString.length();
- int indexOfUnderScore = id.indexOf("_");
- Serial.println("HIGGERRRRRRRRRRRRRRR "+id.substring(indexOflevel,indexOfUnderScore));
- 
- int parentLevel = (id.substring(indexOflevel,indexOfUnderScore).toInt());
- currentLevel = parentLevel  +1;
+        min = WiFi.RSSI(i);
+         
+// Serial.println("HIGGERRRRRRRRRRRRRRR "+id.substring(indexOflevel,indexOfUnderScore));
+// 
+
         ret = nets[i];
       }
+      Serial.println("Min: "+ String(min));
       Serial.print(" (");
       Serial.println("NET: "+ nets[i]);
       Serial.print(WiFi.RSSI(i));
@@ -232,6 +245,10 @@ boolean isHigherLevel(String id){
     }
   }
   Serial.println("Closest ssid is "+ ret);
+  int indexOflevel = ret.indexOf(startString) + startString.length();
+ int indexOfUnderScore = ret.indexOf("_");
+   int parentLevel = (ret.substring(indexOflevel,indexOfUnderScore).toInt());
+ currentLevel = parentLevel  +1;
   if(ret.equals("")){
     delay(2000);
     getWifiNetworks();
@@ -303,7 +320,7 @@ void checkheartbeat() {
 }
 void loop(void){
   server.handleClient();
-//  checkheartbeat();
+
 
   int packetSize = Udp.parsePacket();
   if (packetSize)
@@ -322,4 +339,5 @@ void loop(void){
     Udp.write(replyPacekt);
     Udp.endPacket();
   }
+    checkheartbeat();
 } 
