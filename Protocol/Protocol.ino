@@ -8,6 +8,7 @@
 
 int localUdpPort = 8888; // the destination port
 MDNSResponder mdns;
+String parentIP = "";
 int pin_OP = 4;
 int key_addr = 514;
 WiFiUDP Udp;
@@ -73,14 +74,14 @@ int toggle(String action,String salt){
 String sendHTTP(String type){
   HTTPClient http;
   //GET AP number http://jsonplaceholder.typicode.com/users/1
-  WiFi.mode(WIFI_STA);
-//  http.begin("http://"+WiFi.gatewayIP().toString());
-  Serial.println("http://"+WiFi.gatewayIP().toString()+"/"+type);
-http.begin("http://192.168.4.1/getChild");
+  
+  http.begin("http://"+parentIP+"/"+type);
+  Serial.println("http://"+parentIP+"/"+type);
+//http.begin("http://192.168.4.1/getChild");
 
   
   int httpCode = http.GET();
-   Serial.println("PArent IP is: "+WiFi.gatewayIP().toString());
+   Serial.println("PArent IP is: "+parentIP);
    String payload = "0";
    Serial.println("htttpcode :"+String(httpCode));
     if (httpCode > 0) { //Check the returning code
@@ -95,6 +96,7 @@ http.begin("http://192.168.4.1/getChild");
     return payload;
 }
 void startAP(String ssid){
+  WiFi.mode(WIFI_STA);
   String payload = sendHTTP("getChild");
   Serial.println("Payload :"+payload);
 int childNumber = payload.toInt();
@@ -175,6 +177,15 @@ String epass= "";
   server.on("/", [](){
     server.send(200, "text/html", webPage);
   });
+  server.on("/sendToRoot", [](){
+    String dev_id = server.arg("dev_id");
+    String dev_status = server.arg("status");
+    String broadcastSSID = startString+currentLevel+"_"+childNumber;
+    String payload = sendHTTP("sendToRoot?dev_id="+dev_id+"&status="+dev_status);
+    Serial.println("sendToRoot "+dev_id +" "+dev_status);
+    server.send(200, "text/html", webPage);
+  });
+  
   server.on("/socket1On", [](){ 
     String action = server.arg("action");
     String salt= server.arg("salt");
@@ -293,27 +304,44 @@ String epass= "";
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
     Serial.println(WiFi.localIP());
+    parentIP = WiFi.gatewayIP().toString();
     startAP("swag_1") ;
     Udp.begin(localUdpPort);
+    
   Serial.printf("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
   startServer();  
  
 }
 int missedHeartBeats = 0;
 int heartbeatcounter = 0;
+int failcounter = 0;
 void checkheartbeat() {
   heartbeatcounter = heartbeatcounter + 1;
-  if (heartbeatcounter == 5000) {
+  if (heartbeatcounter == 250000) {
     heartbeatcounter = 0;
     String payload = sendHTTP("heartbeat");
+    String broadcastSSID = startString+currentLevel+"_"+childNumber;
+    sendHTTP("sendToRoot?dev_id="+broadcastSSID+"&status=83");
     Serial.println("Payload received for heartbeat: " + payload);
     if (payload != "Good") {
+      failcounter = failcounter + 1;
+      if (failcounter == 5) {
+        failcounter = 0;
       //Disconnect and scan for other networks
-      Serial.print("Heartbeat Failed \n");
+      //Serial.print("Heartbeat Failed \n");
 //      WiFi.disconnect();
       boolean conn =WiFi.softAPdisconnect (true);
      Serial.println(conn);
       Serial.println("AP stopped" + conn);
+      Serial.print("**********************************API Stopped.. Restarting ***************** \n");
+      setup();
+      }
+      else if (failcounter < 5) {
+        Serial.print("**********************************Heartbeat Failed.. Retrying ***************** \n");
+      }
+    }
+    else {
+      failcounter = 0;
     }
     
   }
@@ -340,4 +368,4 @@ void loop(void){
     Udp.endPacket();
   }
     checkheartbeat();
-} 
+}
