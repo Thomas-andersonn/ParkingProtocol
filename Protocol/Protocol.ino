@@ -9,6 +9,7 @@
 int localUdpPort = 8888; // the destination port
 MDNSResponder mdns;
 String parentIP = "";
+ String broadcastSSID = "";
 int pin_OP = 4;
 int key_addr = 514;
 WiFiUDP Udp;
@@ -100,7 +101,7 @@ void startAP(String ssid){
   String payload = sendHTTP("getChild");
   Serial.println("Payload :"+payload);
 int childNumber = payload.toInt();
-String broadcastSSID = startString+currentLevel+"_"+childNumber;
+ broadcastSSID = startString+currentLevel+"_"+childNumber;
 WiFi.mode(WIFI_AP_STA);
    boolean conn = WiFi.softAP(broadcastSSID.c_str(), "ishusing");
   
@@ -183,7 +184,7 @@ String epass= "";
     String broadcastSSID = startString+currentLevel+"_"+childNumber;
     String payload = sendHTTP("sendToRoot?dev_id="+dev_id+"&status="+dev_status);
     Serial.println("sendToRoot "+dev_id +" "+dev_status);
-    server.send(200, "text/html", webPage);
+    server.send(200, "text/html", "sendToRoot "+dev_id +" "+dev_status);
   });
   
   server.on("/socket1On", [](){ 
@@ -320,7 +321,7 @@ void checkheartbeat() {
   if (heartbeatcounter == 250000) {
     heartbeatcounter = 0;
     String payload = sendHTTP("heartbeat");
-    String broadcastSSID = startString+currentLevel+"_"+childNumber;
+//    String broadcastSSID = startString+currentLevel+"_"+childNumber;
     sendHTTP("sendToRoot?dev_id="+broadcastSSID+"&status=83");
     Serial.println("Payload received for heartbeat: " + payload);
     if (payload != "Good") {
