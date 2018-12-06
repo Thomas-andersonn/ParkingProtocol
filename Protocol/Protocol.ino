@@ -13,8 +13,6 @@ String parentIP = "";
 int pin_OP = 4;
 int key_addr = 514;
 WiFiUDP Udp;
-char incomingPacket[255];  // buffer for incoming packets
-char  replyPacekt[] = "Hi there! Got the message :-)";  // a reply string to send back
 //Packet Buffer 
 const int packetSize = 20;
 byte packetBuffer[packetSize]; 
@@ -33,27 +31,7 @@ String webPage = "";
 #include <user_interface.h>
 }
 
-int client_status( )
-{
-
-unsigned char number_client;
-struct station_info *stat_info;
-
-struct ip_addr *IPaddress;
-IPAddress address;
-int i=1;
-
-number_client= wifi_softap_get_station_num();
-yield();
-delay(100);
-stat_info = wifi_softap_get_station_info();
-
-Serial.print("Total connected_client are = ");
-Serial.println(number_client);
  
-delay(100);
-return number_client;
-} 
 int decrypt(String action,String salt){
   Serial.println(action.toInt());
   Serial.println(key);
@@ -73,8 +51,7 @@ int toggle(String action,String salt){
     return act;
 }
 String sendHTTP(String type){
-  HTTPClient http;
-  //GET AP number http://jsonplaceholder.typicode.com/users/1
+  HTTPClient http; 
   
   http.begin("http://"+parentIP+"/"+type);
   Serial.println("http://"+parentIP+"/"+type);
@@ -111,12 +88,9 @@ WiFi.mode(WIFI_AP_STA);
     
 }
 void startServer(){
-    webPage += "<h1>ESP8266 Web Server</h1><p>Socket #1 <a href=\"socket1On\"><button>ON</button></a>&nbsp;<a href=\"socket1Off\"><button>OFF</button></a></p>";
-  webPage += "<p>Socket #2 <a href=\"socket2On\"><button>ON</button></a>&nbsp;<a href=\"socket2Off\"><button>OFF</button></a></p>";
+    webPage += "ESP8266 Connected"; 
     
-  if (mdns.begin("esp8266", WiFi.localIP())) {
-    Serial.println("MDNS responder started");
-  }
+ mdns.begin("esp8266", WiFi.localIP());
  server.on("/setKey", [](){
   String qsid =server.arg("key"); 
 //  key = (server.arg("key"));
@@ -147,9 +121,7 @@ String epass= "";
     server.send(200, "text/html", epass);
   });
    server.on("/status", [](){
-    int status = client_status();
-    Serial.println(status);
-    Serial.println("Was the status");
+    
     server.send(200, "text/html", webPage);
   });
   server.on("/getChild", [](){
@@ -204,7 +176,6 @@ String epass= "";
 boolean isHigherLevel(String id){
  int indexOflevel = id.indexOf(startString) + startString.length();
  int indexOfUnderScore = id.indexOf("_");
- Serial.println("HIGGERRRRRRRRRRRRRRR "+id.substring(indexOflevel,indexOfUnderScore));
  
  int parentLevel = (id.substring(indexOflevel,indexOfUnderScore).toInt());
  if(parentLevel < currentLevel){
@@ -238,12 +209,9 @@ boolean isHigherLevel(String id){
 //      Serial.println("---------------------------------");
       
       if(nets[i].startsWith(startString) && WiFi.RSSI(i)> min && isHigherLevel(nets[i])){
-        Serial.println("ISHUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU");
         String id = nets[i];
         min = WiFi.RSSI(i);
          
-// Serial.println("HIGGERRRRRRRRRRRRRRR "+id.substring(indexOflevel,indexOfUnderScore));
-// 
 
         ret = nets[i];
       }
@@ -274,7 +242,6 @@ void setup(void){
 
   Serial.begin(115200);
      String ret= getWifiNetworks();
-     Serial.println(ret+"  Returneeeeeeeeeeeeeeeeeeed Network");
     EEPROM.begin(512);
 String epass= "";
   for (int i = 0; i < 1; ++i)
@@ -307,10 +274,8 @@ String epass= "";
     Serial.println(WiFi.localIP());
     parentIP = WiFi.gatewayIP().toString();
     startAP("swag_1") ;
-    Udp.begin(localUdpPort);
-    
-  Serial.printf("Now listening at IP %s, UDP port %d\n", WiFi.localIP().toString().c_str(), localUdpPort);
-  startServer();  
+
+     startServer();  
  
 }
 int missedHeartBeats = 0;
@@ -351,22 +316,5 @@ void loop(void){
   server.handleClient();
 
 
-  int packetSize = Udp.parsePacket();
-  if (packetSize)
-  {
-    // receive incoming UDP packets
-    Serial.printf("Received %d bytes from %s, port %d\n", packetSize, Udp.remoteIP().toString().c_str(), Udp.remotePort());
-    int len = Udp.read(incomingPacket, 255);
-    if (len > 0)
-    {
-      incomingPacket[len] = 0;
-    }
-    Serial.printf("UDP packet contents: %s\n", incomingPacket);
-
-    // send back a reply, to the IP address and port we got the packet from
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write(replyPacekt);
-    Udp.endPacket();
-  }
     checkheartbeat();
 }
